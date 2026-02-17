@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/the-new-css-reset/css/reset.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Suzuki Portfolio</title>
+</head>
+
+<body>
+
+    <header>
+        <h1>Suzuki Portfolio</h1>
+        <nav>
+            <ul>
+                <li><a href="#about">About</a></li>
+                <li><a href="#works">Works</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="mainvisual">
+            <h2>Welcome to My Portfolio</h2>
+            <p>Discover my projects and skills in web development.</p>
+            <div class="scroll-indicator">
+                <span class="arrow">↓</span>
+                <span class="text">Scroll Down</span>
+            </div>
+        </section>
+        <section id="about">
+            <h2>About Me</h2>
+            <p>Welcome to my portfolio website. I am Suzuki, a web developer specializing in front-end development.</p>
+        </section>
+
+        <section id="works">
+            <h2>My Works</h2>
+            <ul>
+                <li>Project A - A responsive website for a local business.</li>
+                <li>Project B - An e-commerce platform with a custom CMS.</li>
+                <li>Project C - A mobile app for task management.</li>
+            </ul>
+        </section>
+
+        <section id="contact">
+            <h2>Contact Me</h2>
+            <p>If you'd like to get in touch, please email me at </p>
+
+            <section class="email">
+                <span class="user">suzuki.portfolio</span>
+                <span class="at">@</span>
+                <span class="domain">example.com</span>
+            </section>
+        </section>
+    </main>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <div class="container">
+        <canvas id="backcanvas">
+
+        </canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーンのセットアップ
+
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('backcanvas'),
+            antialias: true,
+            alpha: true
+        });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // 双四角錐（四角錐+四角錐）ジオメトリの作成
+        const createDiamondGeometry = () => {
+            const geometry = new THREE.BufferGeometry();
+
+            const vertices = new Float32Array([
+                // 上部の頂点
+                0, 1.1, 0,
+
+                // 中央の正方形の4つの頂点
+                1, 0, 0,      // 右
+                0, 0, 1,      // 奥
+                -1, 0, 0,     // 左
+                0, 0, -1,     // 手前
+
+                // 下部の頂点
+                0, -1.1, 0
+            ]);
+
+            const indices = [
+                // 上部の四角錐（4つの三角形）
+                0, 1, 2,  // 上頂点-右-奥
+                0, 2, 3,  // 上頂点-奥-左
+                0, 3, 4,  // 上頂点-左-手前
+                0, 4, 1,  // 上頂点-手前-右
+
+                // 下部の四角錐（4つの三角形）
+                5, 2, 1,  // 下頂点-奥-右
+                5, 3, 2,  // 下頂点-左-奥
+                5, 4, 3,  // 下頂点-手前-左
+                5, 1, 4   // 下頂点-右-手前
+            ];
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+
+            return geometry;
+        };
+
+        const geometry = createDiamondGeometry();
+
+        // 反射を抑えたマット質感のマテリアル
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x2c2c2c,
+            metalness: 0,
+            roughness: 0.8,
+            transparent: true,
+            opacity: 0.3,
+            flatShading: true
+        });
+
+        const cube = new THREE.Mesh(geometry, material);
+
+
+
+        scene.add(cube);
+
+        // エッジの追加
+        const edges = new THREE.EdgesGeometry(geometry);
+        const line = new THREE.LineSegments(
+            edges,
+            new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 })
+        );
+        cube.add(line);
+
+        // ライトの設定
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight2.position.set(-5, -5, -5);
+        scene.add(directionalLight2);
+
+        camera.position.z = 5;
+
+        // スクロール処理
+        let scrollY = 0;
+        let rotateIndex = 0;
+
+        window.addEventListener('scroll', () => {
+            scrollY = window.scrollY;
+
+            // プログレスバーの更新
+            const scrollPercent = (scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+
+            document.getElementById('progressBar').style.width = scrollPercent + '%';
+
+        });
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            rotateIndex += 0.005;
+
+            // 微妙な浮遊効果
+            cube.rotation.y = scrollY * 0.01 + rotateIndex;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // リサイズ処理
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // スクロールインジケーターを隠す
+        window.addEventListener('scroll', () => {
+            const indicator = document.querySelector('.scroll-indicator');
+            if (window.scrollY > 100) {
+                indicator.style.opacity = '0';
+                indicator.style.transition = 'opacity 0.5s';
+            } else {
+                indicator.style.opacity = '1';
+            }
+        }, { once: false });
+
+
+    </script>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>
